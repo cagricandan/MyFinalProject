@@ -1,14 +1,20 @@
 ﻿using Business.Abstract;
 using Business.Constans;
+using Business.ValidationRules.FluentValidation;
+using Core.Aspects.Autofac.Validation;
+using Core.CrossCuttingConcerns.Validation;
 using Core.Utilities;
 using Core.Utilities.Results;
 using DataAccess.Abstract;
 using DataAccess.Concrate.InMemory;
 using Entities.Concrate;
 using Entities.DTOs;
+using FluentValidation;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
+using ValidationException = FluentValidation.ValidationException;
 
 namespace Business.Concrate
 {
@@ -22,13 +28,12 @@ namespace Business.Concrate
             _ıProductDal = productDal;
         }
 
+        [ValidationAspect(typeof(ProductValidator))]
         public IResult Add(Product product)
         {
-            if (product.ProductName.Length < 2)
-            {
-                //magic string
-                return new ErrorResult(Messages.ProductNameInvaild);
-            }
+            //validation
+            //business code
+            ValidationTool.Validate(new ProductValidator(), product);
             _ıProductDal.Add(product);
 
             return new SuccessResult(Messages.ProductAdded);
