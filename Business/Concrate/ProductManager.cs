@@ -4,12 +4,14 @@ using Business.ValidationRules.FluentValidation;
 using Core.Aspects.Autofac.Validation;
 using Core.CrossCuttingConcerns.Validation;
 using Core.Utilities;
+using Core.Utilities.Business;
 using Core.Utilities.Results;
 using DataAccess.Abstract;
 using DataAccess.Concrate.InMemory;
 using Entities.Concrate;
 using Entities.DTOs;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore.Internal;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -21,22 +23,36 @@ namespace Business.Concrate
     public class ProductManager : IProductService
     {
         IProductDal _ıProductDal;
- 
+        ICategoryService _categoryService;
 
-        public ProductManager(IProductDal productDal)
+        public ProductManager(IProductDal productDal,ICategoryService categoryService)
         {
             _ıProductDal = productDal;
+            _categoryService = categoryService;
         }
 
         [ValidationAspect(typeof(ProductValidator))]
         public IResult Add(Product product)
         {
+            var result = BusinessRules.Run(
+                CheckIfProductCountOfCategoryCorrect(product.CategoryId),
+                CheckIfProductNameExists(product.ProductName),
+                CheckIfCategoryCountOfCorrect()
+                );
+
+            if (result != null)
+            {
+                return result;
+            }
+
+            _ıProductDal.Add(product);
+            return new SuccessResult(Messages.ProductAdded);
+
+
             //validation
             //business code
-            ValidationTool.Validate(new ProductValidator(), product);
-            _ıProductDal.Add(product);
+            //ValidationTool.Validate(new ProductValidator(), product);
 
-            return new SuccessResult(Messages.ProductAdded);
         }
 
         public IDataResult<List<Product>> GetAll()
@@ -47,12 +63,12 @@ namespace Business.Concrate
             {
                 return new ErrorDataResult<List<Product>>(Messages.MaintenanceTime);
             }
-            return new SuccessDataResult<List<Product>>(_ıProductDal.GetAll(),Messages.ProductsListed);
+            return new SuccessDataResult<List<Product>>(_ıProductDal.GetAll(), Messages.ProductsListed);
         }
 
         public IDataResult<List<Product>> GetAllByCategoryId(int id)
         {
-        
+
             return new SuccessDataResult<List<Product>>(_ıProductDal.GetAll(p => p.CategoryId == id));
         }
 
@@ -68,7 +84,46 @@ namespace Business.Concrate
 
         public IDataResult<List<ProductDetailDto>> GetProductDetails()
         {
-            return new SuccessDataResult<List< ProductDetailDto>>(_ıProductDal.GetProductDetails(),Messages.MaintenanceTime);
+            return new SuccessDataResult<List<ProductDetailDto>>(_ıProductDal.GetProductDetails(), Messages.MaintenanceTime);
         }
+
+        [ValidationAspect(typeof(ProductValidator))]
+        public IResult Update(Product product)
+        {
+            throw new NotImplementedException();
+        }
+
+        private IResult CheckIfProductCountOfCategoryCorrect(int categoryId)
+        {
+            if (_ıProductDal.GetAll(p => p.CategoryId == categoryId).Count > 10)
+            {
+                return new ErrorResult(Messages.ProductCountOfCategoryError);
+            }
+
+            return new SuccessResult();
+
+        }
+
+        private IResult CheckIfProductNameExists(string productname)
+        {
+            if (_ıProductDal.GetAll(p => p.ProductName == productname).Any())
+            {
+                return new ErrorResult(Messages.ProductNameAlreadyExists);
+            }
+
+            return new SuccessResult();
+
+        }
+
+        private IResult CheckIfCategoryCountOfCorrect()
+        {
+            if (_categoryService.GetAll().Data.Count>=15)
+            {
+                return new ErrorResult(Messages.CategoryCountFull);
+            }
+            return new SuccessResult();
+        }
+
+
     }
 }
