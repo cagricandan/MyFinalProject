@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Core.Entities
 {
-    //Ientity implement eden class veritabanıdır
+    //IEntity implement eden class bir veritabanı tablosudur
     public interface IEntity
     {
     }

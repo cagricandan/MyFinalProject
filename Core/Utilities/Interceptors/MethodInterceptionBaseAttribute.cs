@@ -14,5 +14,4 @@ namespace Core.Utilities.Interceptors
         }
     }
 
-
 }
